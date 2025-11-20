@@ -2,7 +2,7 @@ import Editor, { useMonaco } from '@monaco-editor/react';
 import { useObservable } from '../utils/UseObservable';
 import { currentResult, isDecompiling } from '../logic/Decompiler';
 import { useEffect, useRef } from 'react';
-import { editor } from "monaco-editor";
+import { editor, Range, Uri, type IPosition, type IRange } from "monaco-editor";
 import { isThin } from '../logic/Browser';
 import { classesList } from '../logic/JarFile';
 import { openTab } from '../logic/Tabs';
@@ -44,8 +44,12 @@ const Code = () => {
                         console.log(`Found token for definition: ${className} at offset ${token.start}`);
 
                         if (classList && classList.includes(className)) {
-                            openTab(className);
-                            return null;
+                            const range = new Range(lineNumber, column, lineNumber, column + token.length);
+
+                            return {
+                                uri: Uri.parse(`goto://class/${className}`),
+                                range
+                            };
                         }
 
                         // Library or java classes.
@@ -62,7 +66,21 @@ const Code = () => {
             },
         });
 
+        const editorOpener = monaco.editor.registerEditorOpener({
+            openCodeEditor: function (source: editor.ICodeEditor, resource: Uri, selectionOrPosition?: IRange | IPosition): boolean | Promise<boolean> {
+                if (!resource.scheme.startsWith("goto")) {
+                    return false;
+                }
+
+                const className = resource.path.substring(1);
+                console.log(className);
+                openTab(className);
+                return true;
+            }
+        });
+
         return () => {
+            editorOpener.dispose();
             definitionProvider.dispose();
         };
     }, [monaco, decompileResult, classList]);

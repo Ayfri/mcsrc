@@ -1,8 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import * as monaco from 'monaco-editor';
+import { loader } from '@monaco-editor/react';
 import App from './ui/App.tsx';
 
 import "./index.css";
+
+// Dont load monaco from 3rd party CDN.
+loader.config({ monaco });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

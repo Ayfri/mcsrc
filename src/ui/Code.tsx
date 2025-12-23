@@ -20,7 +20,7 @@ import { LoadingOutlined } from '@ant-design/icons';
 import { setSelectedFile, state } from '../logic/State';
 import type { Token } from '../logic/Tokens';
 import { filter, take } from "rxjs";
-import { usageQuery } from '../logic/FindUsages';
+import { getNextJumpToken, nextUsageNavigation, usageQuery } from '../logic/FindUsages';
 
 const IS_DEFINITION_CONTEXT_KEY_NAME = "is_definition";
 
@@ -80,17 +80,15 @@ function jumpToToken(result: DecompileResult, targetType: 'method' | 'field' | '
             !(targetType === "class" && token.className === target)
         ) continue;
 
-        const sourceUpTo = result.source.slice(0, token.start);
-        const lineNumber = sourceUpTo.match(/\n/g)!.length + 1;
-        const column = sourceUpTo.length - sourceUpTo.lastIndexOf("\n");
+        const { line, column } = getTokenLocation(result, token);
         let listener: IDisposable;
         const updateSelection = () => {
             if (listener) listener.dispose();
-            editor.setSelection(new Range(lineNumber, column, lineNumber, column + token.length));
+            editor.setSelection(new Range(line, column, line, column + token.length));
         };
         if (sameFile) {
             updateSelection();
-            editor.revealLineInCenter(lineNumber, 0);
+            editor.revealLineInCenter(line, 0);
         } else {
             listener = editor.onDidChangeModelContent(() => {
                 // Wait for DOM to settle
@@ -99,6 +97,19 @@ function jumpToToken(result: DecompileResult, targetType: 'method' | 'field' | '
         }
         break;
     }
+}
+
+interface TokenLocation {
+    line: number,
+    column: number;
+    length: number;
+}
+
+function getTokenLocation(result: DecompileResult, token: Token): TokenLocation {
+    const sourceUpTo = result.source.slice(0, token.start);
+    const line = sourceUpTo.match(/\n/g)!.length + 1;
+    const column = sourceUpTo.length - sourceUpTo.lastIndexOf("\n");
+    return { line, column, length: token.length };
 }
 
 function onEditorChangeTo(className: string, callback: () => void) {
@@ -117,6 +128,7 @@ const Code = () => {
     const hideMinimap = useObservable(isThin);
     const decompiling = useObservable(isDecompiling);
     const currentState = useObservable(state);
+    const nextUsage = useObservable(nextUsageNavigation);
 
     const decorationsCollectionRef = useRef<editor.IEditorDecorationsCollection | null>(null);
     const lineHighlightRef = useRef<editor.IEditorDecorationsCollection | null>(null);
@@ -350,7 +362,7 @@ const Code = () => {
 
         const viewUsages = monaco.editor.addEditorAction({
             id: 'find_usages',
-            label: 'Find Usages (Beta)',
+            label: 'Find Usages',
             contextMenuGroupId: 'navigation',
             precondition: IS_DEFINITION_CONTEXT_KEY_NAME, // TODO this does not contain references to none Minecraft classes 
             run: async function (editor: editor.ICodeEditor, ...args: any[]): Promise<void> {
@@ -458,6 +470,32 @@ const Code = () => {
             });
         }
     }, [decompileResult, currentState?.line, currentState?.lineEnd]);
+
+    // Scroll to a "Find usages" token
+    useEffect(() => {
+        if (editorRef.current && decompileResult) {
+            const editor = editorRef.current;
+
+            lineHighlightRef.current?.clear();
+
+            const executeScroll = () => {
+                const nextJumpToken = getNextJumpToken(decompileResult);
+                const nextJumpLocation = nextJumpToken && getTokenLocation(decompileResult, nextJumpToken);
+
+                if (nextJumpLocation) {
+                    const { line, column, length } = nextJumpLocation;
+                    editor.revealLinesInCenterIfOutsideViewport(line, line);
+                    editor.setSelection(new Range(line, column, line, column + length));
+                }
+            };
+
+            editor.getAction('editor.foldAll')?.run().then(() => {
+                requestAnimationFrame(() => {
+                    executeScroll();
+                });
+            });
+        }
+    }, [decompileResult, nextUsage]);
 
     return (
         <Spin

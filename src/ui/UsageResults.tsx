@@ -1,7 +1,8 @@
 import { useObservable } from "../utils/UseObservable";
-import { formatUsage, goToUsage, useageResults } from "../logic/FindUsages";
+import { formatUsage, goToUsage, usageQuery, useageResults } from "../logic/FindUsages";
 import type { UsageString } from "../workers/UsageIndex";
 import { map, Observable } from "rxjs";
+import { openTab } from "../logic/Tabs";
 
 function getUsageClass(usage: UsageString): string {
     if (usage.startsWith("m:") || usage.startsWith("f:")) {
@@ -42,10 +43,12 @@ interface UsageGroupItemProps {
 }
 
 const UsageGroupItem = ({ group }: UsageGroupItemProps) => {
+    const query = useObservable(usageQuery)!;
+
     return (
         <div style={{ marginBottom: "4px" }}>
             <div
-                onClick={() => goToUsage(group.className)}
+                onClick={() => openTab(group.className)}
                 style={{
                     cursor: "pointer",
                     fontSize: "13px",
@@ -62,7 +65,7 @@ const UsageGroupItem = ({ group }: UsageGroupItemProps) => {
                 {group.usages.map((usage, index) => (
                     <div
                         key={index}
-                        onClick={() => goToUsage(group.className)}
+                        onClick={() => goToUsage(query, usage)}
                         style={{
                             cursor: "pointer",
                             fontSize: "12px",

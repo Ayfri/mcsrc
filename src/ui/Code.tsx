@@ -415,17 +415,15 @@ const Code = () => {
 
 
     if (IS_JAVADOC_EDITOR) {
-        const javadoc = useObservable(javadocData);
-
         useEffect(() => {
-            if (!monaco || !editorRef.current || !decompileResult || !javadoc) return;
+            if (!monaco || !editorRef.current || !decompileResult) return;
 
-            const extensions = applyJavadocCodeExtensions(monaco, editorRef.current, decompileResult, javadoc);
+            const extensions = applyJavadocCodeExtensions(monaco, editorRef.current, decompileResult);
 
             return () => {
                 extensions.dispose();
             };
-        }, [monaco, editorRef.current, decompileResult, javadoc]);
+        }, [monaco, editorRef.current, decompileResult]);
     }
 
     // Scroll to top when source changes, or to specific line if specified

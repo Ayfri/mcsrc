@@ -13,6 +13,7 @@ import { enableTabs } from '../logic/Settings.ts';
 import { MenuFoldOutlined } from '@ant-design/icons';
 import { TabsComponent } from './TabsComponent.tsx';
 import IndexProgressModal from './IndexProgressModal.tsx';
+import JavadocModal from '../javadoc/JavadocEditor.tsx';
 
 const App = () => {
     const isSmall = useObservable(isThin);
@@ -34,6 +35,7 @@ const App = () => {
         >
             <ProgressModal />
             <IndexProgressModal />
+            <JavadocModal />
             {enableDiff ? <DiffView /> : isSmall ? <MobileApp /> : <LargeApp />}
         </ConfigProvider>
     );

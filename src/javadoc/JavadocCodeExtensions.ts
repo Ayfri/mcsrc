@@ -5,38 +5,42 @@ import {
     type IDisposable,
 } from "monaco-editor";
 import type { DecompileResult } from "../logic/Decompiler";
-import { getTokenLocation, type Token } from "../logic/Tokens";
-import type { JavadocData, JavadocString } from "./Javadoc";
+import { getTokenLocation, type Token, type TokenLocation } from "../logic/Tokens";
+import { activeJavadocToken, getJavadocForToken, javadocData, type JavadocData, type JavadocString } from "./Javadoc";
 
 type monaco = typeof import("monaco-editor");
 
 const EDIT_JAVADOC_COMMAND_ID = 'editor.action.editJavadoc';
 
-export function applyJavadocCodeExtensions(monaco: monaco, editor: editor.IStandaloneCodeEditor, decompile: DecompileResult, javadoc: JavadocData): IDisposable {
+export function applyJavadocCodeExtensions(monaco: monaco, editor: editor.IStandaloneCodeEditor, decompile: DecompileResult): IDisposable {
     const viewZoneIds: string[] = [];
-    editor.changeViewZones((accessor) => {
-        decompile.tokens
-            .filter(token => token.declaration && token.type === "class")
-            .forEach(token => {
-                const mdValue = getJavadocForToken(token, javadoc);
-                if (!mdValue) {
-                    return;
-                }
+    const javadocDataSub = javadocData.subscribe((javadoc) => {
+        editor.changeViewZones((accessor) => {
+            // Remove any existing zones
+            viewZoneIds.forEach(id => accessor.removeZone(id));
+            viewZoneIds.length = 0;
 
-                const location = getTokenLocation(decompile, token);
+            decompile.tokens
+                .filter(token => token.declaration)
+                .forEach(token => {
+                    const mdValue = getJavadocForToken(token, javadoc);
+                    if (mdValue == null) {
+                        return;
+                    }
 
-                const domNode = document.createElement('div');
-                domNode.className = 'javadoc-zone';
-                domNode.innerHTML = `<span style="color: #6A9955;">${formatMarkdownAsHtml(mdValue)}</span>`;
+                    const domNode = document.createElement('div');
+                    domNode.innerHTML = `<span style="color: #6A9955;">${formatMarkdownAsHtml(mdValue, token)}</span>`;
 
-                const zoneId = accessor.addZone({
-                    afterLineNumber: location.line - 1,
-                    heightInLines: 2,
-                    domNode: domNode
+                    const location = getTokenLocation(decompile, token);
+                    const zoneId = accessor.addZone({
+                        afterLineNumber: location.line - 1,
+                        heightInPx: cacluateHeightInPx(domNode),
+                        domNode: domNode
+                    });
+
+                    viewZoneIds.push(zoneId);
                 });
-
-                viewZoneIds.push(zoneId);
-            });
+        });
     });
 
     const codeLense = monaco.languages.registerCodeLensProvider("java", {
@@ -44,7 +48,7 @@ export function applyJavadocCodeExtensions(monaco: monaco, editor: editor.IStand
             const lenses: languages.CodeLens[] = [];
 
             for (const token of decompile.tokens) {
-                if (!token.declaration || token.type == 'parameter') {
+                if (!token.declaration || token.type == 'parameter' || token.type == 'local') {
                     continue;
                 }
 
@@ -77,7 +81,7 @@ export function applyJavadocCodeExtensions(monaco: monaco, editor: editor.IStand
         label: 'Edit Javadoc',
         run: function (editor, ...args) {
             const token: Token = args[0];
-            console.log("Edit Javadoc for token:", token);
+            activeJavadocToken.next(token);
         }
     });
 
@@ -85,6 +89,8 @@ export function applyJavadocCodeExtensions(monaco: monaco, editor: editor.IStand
         dispose() {
             editJavadocCommand.dispose();
             codeLense.dispose();
+
+            javadocDataSub.unsubscribe();
             editor.changeViewZones((accessor) => {
                 viewZoneIds.forEach(id => accessor.removeZone(id));
             });
@@ -92,20 +98,25 @@ export function applyJavadocCodeExtensions(monaco: monaco, editor: editor.IStand
     };
 }
 
-function getJavadocForToken(token: Token, javadoc: JavadocData): JavadocString | null {
-    switch (token.type) {
-        case 'class':
-            return javadoc.classes[token.className]?.javadoc || null;
-        case 'method':
-            return javadoc.classes[token.className]?.methods[token.name] || null;
-        case 'field':
-            return javadoc.classes[token.className]?.fields[token.name] || null;
-    }
+function formatMarkdownAsHtml(md: string, token: Token): string {
+    // TODO maybe use a proper markdown parser/renderer here
 
-    return null;
+    const nestingLevel = (token.className.match(/\$/g) || []).length + (token.type == 'method' || token.type == 'field' ? 1 : 0);
+    const depth = nestingLevel * 6;
+
+    const indent = "&nbsp;".repeat(depth) + "/// ";
+    return md.split("\n").map(line => indent + line).join("<br>");
 }
 
-function formatMarkdownAsHtml(md: string): string {
-    // TODO maybe use a proper markdown parser/renderer here
-    return md.replace("\n", "<br>");
+
+function cacluateHeightInPx(domNode: HTMLDivElement): number {
+    domNode.style.position = 'absolute';
+    domNode.style.visibility = 'hidden';
+    document.body.appendChild(domNode);
+    const heightInPx = domNode.offsetHeight * 1.2; // Magic number seems to fix it
+    document.body.removeChild(domNode);
+    domNode.style.position = '';
+    domNode.style.visibility = '';
+
+    return heightInPx;
 }

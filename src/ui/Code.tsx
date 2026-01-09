@@ -6,6 +6,7 @@ import {
     type CancellationToken,
     editor,
     type IDisposable,
+    type IMarkdownString,
     type IPosition,
     type IRange,
     languages,
@@ -27,6 +28,66 @@ import { applyJavadocCodeExtensions } from '../javadoc/JavadocCodeExtensions';
 import { selectedInheritanceClassName } from '../logic/Inheritance';
 
 const IS_DEFINITION_CONTEXT_KEY_NAME = "is_definition";
+
+function parseDescriptor(descriptor: string): string {
+    // Parse method descriptor like "(Ljava/lang/String;I)V" or field descriptor like "Ljava/lang/String;"
+    const typeMap: Record<string, string> = {
+        'V': 'void',
+        'Z': 'boolean',
+        'B': 'byte',
+        'C': 'char',
+        'S': 'short',
+        'I': 'int',
+        'J': 'long',
+        'F': 'float',
+        'D': 'double'
+    };
+
+    function parseType(desc: string, index: number): [string, number] {
+        let arrayDepth = 0;
+        while (desc[index] === '[') {
+            arrayDepth++;
+            index++;
+        }
+
+        let type: string;
+        let endIndex: number;
+
+        if (desc[index] === 'L') {
+            endIndex = desc.indexOf(';', index);
+            type = desc.substring(index + 1, endIndex).replace(/\//g, '.');
+            endIndex++;
+        } else {
+            type = typeMap[desc[index]] || desc[index];
+            endIndex = index + 1;
+        }
+
+        type += '[]'.repeat(arrayDepth);
+        return [type, endIndex];
+    }
+
+    // Check if it's a method descriptor (starts with '(')
+    if (descriptor.startsWith('(')) {
+        const endParams = descriptor.indexOf(')');
+        const paramsStr = descriptor.substring(1, endParams);
+        const returnTypeStr = descriptor.substring(endParams + 1);
+
+        const params: string[] = [];
+        let i = 0;
+        while (i < paramsStr.length) {
+            const [type, nextIndex] = parseType(paramsStr, i);
+            params.push(type);
+            i = nextIndex;
+        }
+
+        const [returnType] = parseType(returnTypeStr, 0);
+        return `(${params.join(', ')}) → ${returnType}`;
+    } else {
+        // Field descriptor
+        const [type] = parseType(descriptor, 0);
+        return type;
+    }
+}
 
 function findTokenAtPosition(
     editor: editor.ICodeEditor,
@@ -185,6 +246,64 @@ const Code = () => {
 
                 return null;
             },
+        });
+
+        const hoverProvider = monaco.languages.registerHoverProvider("java", {
+            provideHover(model, position) {
+                const token = findTokenAtPosition(editor, decompileResultRef.current, classListRef.current, false);
+                if (!token) {
+                    return null;
+                }
+
+                const { lineNumber, column } = position;
+                const startPos = model.getPositionAt(token.start);
+                const endPos = model.getPositionAt(token.start + token.length);
+                const range = new Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column);
+
+                const contents: IMarkdownString[] = [];
+
+                // Format class name for display
+                const formattedClassName = token.className.replace(/\//g, '.');
+
+                switch (token.type) {
+                    case 'class':
+                        contents.push({
+                            value: `**Type**\n\n\`\`\`java\n${formattedClassName}\n\`\`\``
+                        });
+                        break;
+
+                    case 'field':
+                        const fieldType = parseDescriptor(token.descriptor);
+                        contents.push({
+                            value: `**Field**\n\n\`\`\`java\n${fieldType} ${token.name}\n\`\`\`\n\n**Declaring class:** \`${formattedClassName}\``
+                        });
+                        break;
+
+                    case 'method':
+                        const signature = parseDescriptor(token.descriptor);
+                        contents.push({
+                            value: `**Method**\n\n\`\`\`java\n${token.name}${signature}\n\`\`\`\n\n**Declaring class:** \`${formattedClassName}\``
+                        });
+                        break;
+
+                    case 'parameter':
+                        contents.push({
+                            value: `**Parameter**\n\n**Class:** \`${formattedClassName}\``
+                        });
+                        break;
+
+                    case 'local':
+                        contents.push({
+                            value: `**Local variable**\n\n**Class:** \`${formattedClassName}\``
+                        });
+                        break;
+                }
+
+                return {
+                    range,
+                    contents
+                };
+            }
         });
 
         const editorOpener = monaco.editor.registerEditorOpener({
@@ -402,6 +521,7 @@ const Code = () => {
             copyAw.dispose();
             foldingRange.dispose();
             editorOpener.dispose();
+            hoverProvider.dispose();
             definitionProvider.dispose();
         };
     }, [monaco, decompileResult, classList]);

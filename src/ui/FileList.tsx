@@ -112,40 +112,17 @@ const handleCopyContent = async (path: string) => {
     }
 };
 
-const FileList = () => {
-    const [expandedKeys, setExpandedKeys] = useState<Key[]>();
-    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, key: string, isLeaf: boolean; } | null>(null);
+interface ContextMenuInfo {
+    x: number;
+    y: number;
+    key: string;
+    isLeaf: boolean;
+}
 
-    const selectedKeys = useObservable(selectedFileKeys);
-    const classes = useObservable(classesList);
-    const onSelect: TreeProps['onSelect'] = useCallback((selectedKeys) => {
-        if (selectedKeys.length === 0) return;
-        if (!classes || !classes.includes(selectedKeys[0] as string)) return;
-        openTab(selectedKeys.join("/"));
-    }, [classes]);
+const getMenuItems = (contextMenu: ContextMenuInfo | null): MenuProps['items'] => {
+    if (!contextMenu) return [];
 
-    const treeData = useObservable(data);
-
-    if (!expandedKeys && selectedKeys) {
-        setExpandedKeys(getPathKeys(selectedKeys[0]));
-    }
-
-    useEffect(() => {
-        const closeMenu = () => setContextMenu(null);
-        document.addEventListener('click', closeMenu);
-        return () => document.removeEventListener('click', closeMenu);
-    }, []);
-
-    const onRightClick: TreeProps['onRightClick'] = useCallback(({ event, node }) => {
-        setContextMenu({
-            x: event.clientX,
-            y: event.clientY,
-            key: node.key as string,
-            isLeaf: !!node.isLeaf
-        });
-    }, []);
-
-    const menuItems: MenuProps['items'] = useMemo(() => contextMenu ? [
+    return [
         {
             key: 'copy-package-path',
             label: 'Copy Package Path',
@@ -182,7 +159,43 @@ const FileList = () => {
             },
             disabled: !contextMenu.isLeaf || !contextMenu.key.endsWith('.class')
         },
-    ] : [], [contextMenu]);
+    ];
+};
+
+const FileList = () => {
+    const [expandedKeys, setExpandedKeys] = useState<Key[]>();
+    const [contextMenu, setContextMenu] = useState<ContextMenuInfo | null>(null);
+
+    const selectedKeys = useObservable(selectedFileKeys);
+    const classes = useObservable(classesList);
+    const onSelect: TreeProps['onSelect'] = useCallback((selectedKeys: Key[]) => {
+        if (selectedKeys.length === 0) return;
+        if (!classes || !classes.includes(selectedKeys[0] as string)) return;
+        openTab(selectedKeys.join("/"));
+    }, [classes]);
+
+    const treeData = useObservable(data);
+
+    if (!expandedKeys && selectedKeys) {
+        setExpandedKeys(getPathKeys(selectedKeys[0]));
+    }
+
+    useEffect(() => {
+        const closeMenu = () => setContextMenu(null);
+        document.addEventListener('click', closeMenu);
+        return () => document.removeEventListener('click', closeMenu);
+    }, []);
+
+    const onRightClick: TreeProps['onRightClick'] = useCallback(({ event, node }: any) => {
+        setContextMenu({
+            x: event.clientX,
+            y: event.clientY,
+            key: node.key as string,
+            isLeaf: !!node.isLeaf
+        });
+    }, []);
+
+    const menuItems = useMemo(() => getMenuItems(contextMenu), [contextMenu]);
 
     return (
         <>

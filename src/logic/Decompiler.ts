@@ -25,7 +25,7 @@ export const isDecompiling = decompilerCounter.pipe(
     distinctUntilChanged()
 );
 
-const DECOMPILER_OPTIONS: Options = {};
+export const DECOMPILER_OPTIONS: Options = {};
 
 const decompilationCache = new Map<string, DecompileResult>();
 
@@ -83,7 +83,7 @@ export const currentSource = currentResult.pipe(
     map(result => result.source)
 );
 
-async function decompileClass(className: string, jar: Jar, options: Options): Promise<DecompileResult> {
+export async function decompileClass(className: string, jar: Jar, options: Options): Promise<DecompileResult> {
     console.log(`Decompiling class: '${className}'`);
 
     const files = Object.keys(jar.entries);

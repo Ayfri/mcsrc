@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'antd/es/table/interface';
 import { openTab } from '../logic/Tabs';
 import { minecraftJar } from '../logic/MinecraftApi';
-import { decompile } from '../logic/vf';
+import { decompileClass, DECOMPILER_OPTIONS } from '../logic/Decompiler';
 import { usageQuery } from '../logic/FindUsages';
 
 // Sorts nodes with children first (directories before files), then alphabetically
@@ -81,19 +81,8 @@ const handleCopyContent = async (path: string) => {
         if (!jar) return;
 
         message.loading({ content: 'Decompiling...', key: 'copy-content' });
-        const classes = await firstValueFrom(classesList);
-        const source = await decompile(path.replace(".class", ""), {
-            source: async (name: string) => {
-                const file = jar.jar.entries[name + ".class"];
-                if (file) {
-                    const arrayBuffer = await file.bytes();
-                    return new Uint8Array(arrayBuffer);
-                }
-                return null;
-            },
-            resources: classes.map(c => c.replace(".class", ""))
-        });
-        await navigator.clipboard.writeText(source);
+        const result = await decompileClass(path, jar.jar, DECOMPILER_OPTIONS);
+        await navigator.clipboard.writeText(result.source);
         message.success({ content: 'Content copied to clipboard', key: 'copy-content' });
     } catch (e) {
         console.error(e);

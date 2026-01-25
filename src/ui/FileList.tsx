@@ -30,7 +30,6 @@ const sortTreeNodes = (nodes: TreeDataNode[] = []) => {
 // Given a list of class files, create a tree structure
 const fileTree: Observable<TreeDataNode[]> = classesList.pipe(
     map(classFiles => {
-        console.log('Building file tree');
         const root: TreeDataNode[] = [];
 
         classFiles.forEach(filePath => {
@@ -159,7 +158,7 @@ const getMenuItems = (
                     message.success('Link copied');
                 }
             },
-            disabled: !link
+            disabled: !link || !contextMenu.isLeaf
         },
         {
             key: 'copy-content',
@@ -194,9 +193,11 @@ const FileList = () => {
 
     const treeData = useObservable(fileTree);
 
-    if (!expandedKeys && selectedKeys) {
-        setExpandedKeys(getPathKeys(selectedKeys[0]));
-    }
+    useEffect(() => {
+        if (expandedKeys === undefined && selectedKeys?.[0]) {
+            setExpandedKeys(getPathKeys(selectedKeys[0] as string));
+        }
+    }, [expandedKeys, selectedKeys]);
 
     useEffect(() => {
         const closeMenu = () => setContextMenu(null);
@@ -227,7 +228,7 @@ const FileList = () => {
                 selectedKeys={selectedKeys}
                 onSelect={onSelect}
                 treeData={treeData}
-                expandedKeys={[...expandedKeys || []]}
+                expandedKeys={expandedKeys ?? []}
                 onExpand={setExpandedKeys}
                 onRightClick={onRightClick}
                 titleRender={(nodeData) => (

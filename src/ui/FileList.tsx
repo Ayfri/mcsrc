@@ -8,7 +8,7 @@ import { selectedFile } from '../logic/State';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'antd/es/table/interface';
 import { openTab } from '../logic/Tabs';
-import { minecraftJar } from '../logic/MinecraftApi';
+import { minecraftJar, type MinecraftJar } from '../logic/MinecraftApi';
 import { decompileClass, DECOMPILER_OPTIONS } from '../logic/Decompiler';
 import { usageQuery } from '../logic/FindUsages';
 
@@ -75,11 +75,8 @@ function getPathKeys(filePath: string): Key[] {
     return result;
 }
 
-const handleCopyContent = async (path: string) => {
+const handleCopyContent = async (path: string, jar: MinecraftJar) => {
     try {
-        const jar = await firstValueFrom(minecraftJar);
-        if (!jar) return;
-
         message.loading({ content: 'Decompiling...', key: 'copy-content' });
         const result = await decompileClass(path, jar.jar, DECOMPILER_OPTIONS);
         await navigator.clipboard.writeText(result.source);
@@ -97,7 +94,10 @@ interface ContextMenuInfo {
     isLeaf: boolean;
 }
 
-const getMenuItems = (contextMenu: ContextMenuInfo | null): MenuProps['items'] => {
+const getMenuItems = (
+    contextMenu: ContextMenuInfo | null,
+    handleCopyItem: (path: string) => void
+): MenuProps['items'] => {
     if (!contextMenu) return [];
 
     return [
@@ -122,7 +122,7 @@ const getMenuItems = (contextMenu: ContextMenuInfo | null): MenuProps['items'] =
         {
             key: 'copy-content',
             label: 'Copy File Content',
-            onClick: () => handleCopyContent(contextMenu.key),
+            onClick: () => handleCopyItem(contextMenu.key),
             disabled: !contextMenu.isLeaf
         },
         {
@@ -142,6 +142,7 @@ const FileList = () => {
     const [expandedKeys, setExpandedKeys] = useState<Key[]>();
     const [contextMenu, setContextMenu] = useState<ContextMenuInfo | null>(null);
 
+    const jar = useObservable(minecraftJar);
     const selectedKeys = useObservable(selectedFileKeys);
     const classes = useObservable(classesList);
     const onSelect: TreeProps['onSelect'] = useCallback((selectedKeys: Key[]) => {
@@ -171,7 +172,11 @@ const FileList = () => {
         });
     }, []);
 
-    const menuItems = useMemo(() => getMenuItems(contextMenu), [contextMenu]);
+    const menuItems = useMemo(() => getMenuItems(contextMenu, (path) => {
+        if (jar) {
+            handleCopyContent(path, jar);
+        }
+    }), [contextMenu, jar]);
 
     return (
         <>

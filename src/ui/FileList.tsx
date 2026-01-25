@@ -100,23 +100,51 @@ const getMenuItems = (
 ): MenuProps['items'] => {
     if (!contextMenu) return [];
 
+    const path = contextMenu.key;
+    const packagePath = path.replace(/\//g, '.').replace('.class', '');
+    const filename = path.split('/').pop() || '';
+
+    const renderLabel = (title: string, value: string) => (
+        <div style={{ display: 'flex', gap: '24px', justifyContent: 'space-between', alignItems: 'center', minWidth: '300px' }}>
+            <span style={{ whiteSpace: 'nowrap' }}>{title}</span>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginLeft: 'auto' }}>
+                <span style={{
+                    color: 'rgba(255, 255, 255, 0.45)',
+                    fontSize: '12px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '250px'
+                }} title={value}>
+                    {value}
+                </span>
+            </div>
+        </div>
+    );
+
     return [
         {
             key: 'copy-package-path',
-            label: 'Copy Package Path',
+            label: renderLabel('Copy Package Path', packagePath),
             onClick: () => {
-                const path = contextMenu.key;
-                const formattedPath = path.replace(/\//g, '.').replace('.class', '');
-                navigator.clipboard.writeText(formattedPath);
-                message.success('Path copied');
+                navigator.clipboard.writeText(packagePath);
+                message.success('Package Path copied');
             }
         },
         {
             key: 'copy-path',
-            label: 'Copy Path',
+            label: renderLabel('Copy Path', path),
             onClick: () => {
-                navigator.clipboard.writeText(contextMenu.key);
-                message.success('Relative path copied');
+                navigator.clipboard.writeText(path);
+                message.success('Path copied');
+            }
+        },
+        {
+            key: 'copy-filename',
+            label: renderLabel('Copy Filename', filename),
+            onClick: () => {
+                navigator.clipboard.writeText(filename);
+                message.success('Filename copied');
             }
         },
         {
@@ -129,7 +157,6 @@ const getMenuItems = (
             key: 'find-usages',
             label: 'Find Usages',
             onClick: () => {
-                const path = contextMenu.key;
                 const cleanPath = path.replace('.class', '');
                 usageQuery.next(cleanPath);
             },

@@ -96,13 +96,16 @@ interface ContextMenuInfo {
 
 const getMenuItems = (
     contextMenu: ContextMenuInfo | null,
-    handleCopyItem: (path: string) => void
+    handleCopyItem: (path: string) => void,
+    jar: MinecraftJar | undefined
 ): MenuProps['items'] => {
     if (!contextMenu) return [];
 
     const path = contextMenu.key;
     const packagePath = path.replace(/\//g, '.').replace('.class', '');
     const filename = path.split('/').pop() || '';
+    const linkPath = path.replace('.class', '');
+    const link = jar ? `https://mcsrc.dev/#1/${jar.version}/${linkPath}` : '';
 
     const renderLabel = (title: string, value: string) => (
         <div style={{ display: 'flex', gap: '24px', justifyContent: 'space-between', alignItems: 'center', minWidth: '300px' }}>
@@ -146,6 +149,17 @@ const getMenuItems = (
                 navigator.clipboard.writeText(filename);
                 message.success('Filename copied');
             }
+        },
+        {
+            key: 'copy-link',
+            label: renderLabel('Copy Link', link),
+            onClick: () => {
+                if (link) {
+                    navigator.clipboard.writeText(link);
+                    message.success('Link copied');
+                }
+            },
+            disabled: !link
         },
         {
             key: 'copy-content',
@@ -203,7 +217,7 @@ const FileList = () => {
         if (jar) {
             handleCopyContent(path, jar);
         }
-    }), [contextMenu, jar]);
+    }, jar), [contextMenu, jar]);
 
     return (
         <>

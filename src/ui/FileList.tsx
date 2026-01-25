@@ -28,7 +28,7 @@ const sortTreeNodes = (nodes: TreeDataNode[] = []) => {
 };
 
 // Given a list of class files, create a tree structure
-const data: Observable<TreeDataNode[]> = classesList.pipe(
+const fileTree: Observable<TreeDataNode[]> = classesList.pipe(
     map(classFiles => {
         console.log('Building file tree');
         const root: TreeDataNode[] = [];
@@ -76,8 +76,6 @@ function getPathKeys(filePath: string): Key[] {
 }
 
 const handleCopyContent = async (path: string) => {
-    if (!path.endsWith(".class")) return;
-
     try {
         const jar = await firstValueFrom(minecraftJar);
         if (!jar) return;
@@ -143,12 +141,10 @@ const getMenuItems = (contextMenu: ContextMenuInfo | null): MenuProps['items'] =
             label: 'Find Usages',
             onClick: () => {
                 const path = contextMenu.key;
-                if (path.endsWith('.class')) {
-                    const cleanPath = path.replace('.class', '');
-                    usageQuery.next(cleanPath);
-                }
+                const cleanPath = path.replace('.class', '');
+                usageQuery.next(cleanPath);
             },
-            disabled: !contextMenu.isLeaf || !contextMenu.key.endsWith('.class')
+            disabled: !contextMenu.isLeaf
         },
     ];
 };
@@ -165,7 +161,7 @@ const FileList = () => {
         openTab(selectedKeys.join("/"));
     }, [classes]);
 
-    const treeData = useObservable(data);
+    const treeData = useObservable(fileTree);
 
     if (!expandedKeys && selectedKeys) {
         setExpandedKeys(getPathKeys(selectedKeys[0]));

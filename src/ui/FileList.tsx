@@ -76,36 +76,27 @@ function getPathKeys(filePath: string): Key[] {
 }
 
 const handleCopyContent = async (path: string) => {
+    if (!path.endsWith(".class")) return;
+
     try {
         const jar = await firstValueFrom(minecraftJar);
         if (!jar) return;
 
-        if (path.endsWith(".class")) {
-            message.loading({ content: 'Decompiling...', key: 'copy-content' });
-            const classes = await firstValueFrom(classesList);
-            const source = await decompile(path.replace(".class", ""), {
-                source: async (name: string) => {
-                    const file = jar.jar.entries[name + ".class"];
-                    if (file) {
-                        const arrayBuffer = await file.bytes();
-                        return new Uint8Array(arrayBuffer);
-                    }
-                    return null;
-                },
-                resources: classes.map(c => c.replace(".class", ""))
-            });
-            await navigator.clipboard.writeText(source);
-            message.success({ content: 'Content copied to clipboard', key: 'copy-content' });
-        } else {
-            const entry = jar.jar.entries[path];
-            if (entry) {
-                const text = await entry.text();
-                await navigator.clipboard.writeText(text);
-                message.success('Content copied to clipboard');
-            } else {
-                message.error('File not found in jar');
-            }
-        }
+        message.loading({ content: 'Decompiling...', key: 'copy-content' });
+        const classes = await firstValueFrom(classesList);
+        const source = await decompile(path.replace(".class", ""), {
+            source: async (name: string) => {
+                const file = jar.jar.entries[name + ".class"];
+                if (file) {
+                    const arrayBuffer = await file.bytes();
+                    return new Uint8Array(arrayBuffer);
+                }
+                return null;
+            },
+            resources: classes.map(c => c.replace(".class", ""))
+        });
+        await navigator.clipboard.writeText(source);
+        message.success({ content: 'Content copied to clipboard', key: 'copy-content' });
     } catch (e) {
         console.error(e);
         message.error({ content: 'Failed to copy content', key: 'copy-content' });

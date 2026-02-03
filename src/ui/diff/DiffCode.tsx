@@ -1,6 +1,7 @@
 import { DiffEditor } from '@monaco-editor/react';
 import { useObservable } from '../../utils/UseObservable';
-import { getLeftDiff, getRightDiff, countLineDiff, updateLineChanges } from '../../logic/Diff';
+import { getLeftDiff, getRightDiff } from '../../logic/Diff';
+import { updateLineChanges } from '../../logic/LineChanges';
 import { useEffect, useRef } from 'react';
 import type { editor } from 'monaco-editor';
 import { Spin } from "antd";
@@ -26,8 +27,7 @@ const DiffCode = ({ height }: DiffCodeProps) => {
             leftResult.className === currentPath &&
             rightResult.className === currentPath
         ) {
-            const counts = countLineDiff(leftResult.source, rightResult.source);
-            updateLineChanges(currentPath, counts.additions, counts.deletions);
+            updateLineChanges(currentPath, leftResult.source, rightResult.source);
         }
     }, [leftResult, rightResult, loading, currentPath]);
 

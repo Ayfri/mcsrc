@@ -73,10 +73,10 @@ const DiffFileList = () => {
                         {info.state.toUpperCase()}
                     </Tag>
                     {info.deletions !== undefined && info.deletions > 0 && (
-                        <span style={{ color: '#ff4d4f', fontSize: '12px', fontWeight: 'bold' }}>-{info.deletions}</span>
+                        <span style={{ color: token.colorError, fontSize: '12px', fontWeight: 'bold' }}>-{info.deletions}</span>
                     )}
                     {info.additions !== undefined && info.additions > 0 && (
-                        <span style={{ color: '#52c41a', fontSize: '12px', fontWeight: 'bold' }}>+{info.additions}</span>
+                        <span style={{ color: token.colorSuccess, fontSize: '12px', fontWeight: 'bold' }}>+{info.additions}</span>
                     )}
                     {info.state === 'modified' && info.additions === 0 && info.deletions === 0 && (
                         <span style={{ color: token.colorTextDescription, fontSize: '12px', fontStyle: 'italic' }}>None</span>
@@ -135,8 +135,8 @@ const DiffFileList = () => {
                     <span style={{ marginLeft: 16, color: token.colorTextDescription }}>
                         {summary.added === 0 && summary.deleted === 0 && summary.modified === 0 ? "None" : (
                             <>
-                                <span style={{ color: 'green' }}>+{summary.added} new files</span>
-                                <span style={{ marginLeft: 8, color: 'red' }}>-{summary.deleted} deleted</span>
+                                <span style={{ color: token.colorSuccess }}>+{summary.added} new files</span>
+                                <span style={{ marginLeft: 8, color: token.colorError }}>-{summary.deleted} deleted</span>
                                 <span style={{ marginLeft: 8 }}>{summary.modified} modified</span>
                             </>
                         )}

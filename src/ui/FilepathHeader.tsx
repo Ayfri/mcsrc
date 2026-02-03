@@ -43,10 +43,10 @@ export const FilepathHeader = () => {
             {changeInfo && (
                 <div style={{ display: "flex", gap: "4px", marginLeft: "8px" }}>
                     {changeInfo.deletions !== undefined && changeInfo.deletions > 0 && (
-                        <span style={{ color: '#ff4d4f', fontSize: '12px', fontWeight: 'bold' }}>-{changeInfo.deletions}</span>
+                        <span style={{ color: token.colorError, fontSize: '12px', fontWeight: 'bold' }}>-{changeInfo.deletions}</span>
                     )}
                     {changeInfo.additions !== undefined && changeInfo.additions > 0 && (
-                        <span style={{ color: '#52c41a', fontSize: '12px', fontWeight: 'bold' }}>+{changeInfo.additions}</span>
+                        <span style={{ color: token.colorSuccess, fontSize: '12px', fontWeight: 'bold' }}>+{changeInfo.additions}</span>
                     )}
                 </div>
             )}

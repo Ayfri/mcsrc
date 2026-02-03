@@ -78,6 +78,14 @@ export function updateLineChanges(file: string, additions: number, deletions: nu
     calculatedLineChanges.next(next);
 }
 
+// Clear calculated line changes when diff versions change to prevent stale data
+combineLatest([
+    getLeftDiff().selectedVersion,
+    selectedMinecraftVersion
+]).subscribe(() => {
+    calculatedLineChanges.next(new Map());
+});
+
 let diffChanges: Observable<Map<string, ChangeInfo>> | null = null;
 export function getDiffChanges(): Observable<Map<string, ChangeInfo>> {
     if (!diffChanges) {
